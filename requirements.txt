@@ -1,0 +1,11 @@
+git+https://github.com/kywch/carbs.git@951e017e9549f12e754bc0f95797c9774e5e8d2b
+
+gym
+kaleido
+numpy
+opencv-python
+orjson
+plotly
+Pillow
+torch
+wandb

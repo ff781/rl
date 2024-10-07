@@ -1,0 +1,81 @@
+{
+    "project_name": "finality",
+    "env_name": "walker_walk",
+    "model_filename": "model.pt",
+    "num_episodes": null,
+    "obs_type": "img",
+    "img_size": 64,
+    "action_repeat": 2,
+    "model_env": {
+        "_": "create_rssm_env",
+        "hidden_size": 256,
+        "state_size": 30,
+        "base_depth": 32,
+        "uncertainty_predictor": null,
+        "uncertainty_scale": null,
+        "dynamic_factor": null,
+        "dynamic_uncertainty_model": null
+    },
+    "actor": {
+        "_": "TanhActor",
+        "hidden_size": 256,
+        "layer_num": 3
+    },
+    "critic": {
+        "_": "EnsembleVCritic",
+        "hidden_size": 256,
+        "layer_num": 3,
+        "ensemble_size": 2
+    },
+    "model_objective": {
+        "_": "RSSMEnvObjective",
+        "scales": {
+            "reward": 1.0,
+            "kl": 1.0,
+            "reconstruction": 1.0,
+            "regularization": 1.0
+        }
+    },
+    "actor_objective": {
+        "_": "SACActorObjective",
+        "scales": {
+            "actor": 1.0,
+            "entropy": 1.0
+        }
+    },
+    "critic_objective": {
+        "_": "SACCriticObjective",
+        "scales": {
+            "critic": 1.0
+        }
+    },
+    "model_optimizer": {
+        "lr": 3e-4,
+        "eps": 1e-5,
+        "max_grad_norm": 1e3
+    },
+    "actor_optimizer": {
+        "lr": 8e-5,
+        "eps": 1e-5,
+        "max_grad_norm": 1e2
+    },
+    "critic_optimizer": {
+        "lr": 8e-5,
+        "eps": 1e-5,
+        "max_grad_norm": 1e2
+    },
+    "scheduler": {
+        "_": "AlternatingScheduler"
+    },
+    "trainer": {
+        "_": "DreamTrainer",
+        "horizon": 5,
+        "dream_ratio": 1
+    },
+    "num_epochs": 1000,
+    "num_batches": 100,
+    "batch_size": 8,
+    "seq_len": 32,
+    "eval_epochs": 50,
+    "save_video": true
+}

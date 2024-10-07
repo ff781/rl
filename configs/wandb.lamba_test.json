@@ -1,0 +1,166 @@
+{
+  "project_name": "finality",
+  "method": "bayes",
+  "metric": {"goal": "maximize", "name": "eval/return"},
+  "early_terminate": {
+    "type": "hyperband",
+    "eta": 3,
+    "min_iter": 100
+  },
+  "parameters": {
+    "env_name": {
+      "values": ["walker_walk", "cheetah_run"]
+    },
+    "num_episodes": {
+      "value": null
+    },
+    "obs_type": {
+      "value": "img"
+    },
+    "img_size": {
+      "value": 64
+    },
+    "action_repeat": {
+      "value": 2
+    },
+    "model_env": {
+      "parameters":
+        {
+          "_": {"value": "create_rssm_env"},
+          "hidden_size": {"value": 256},
+          "state_size": {"value": 30},
+          "base_depth": {"value": 32},
+          "uncertainty_predictor": {
+            "parameters": {
+              "_": {"value": "RewardEnsemble"},
+              "layer_num": {"value": 2},
+              "layer_size": {"value": 256},
+              "ensemble_size": {"value": 7}
+            }
+          },
+          "uncertainty_scale": {"values": [6, 25, 100, 400, 1600]},
+          "dynamic_factor": {"value": null},
+          "dynamic_uncertainty_model": {"value": null}
+        }
+    },
+    "actor": {
+      "value": {
+        "_": "TanhActor",
+        "hidden_size": 300,
+        "layer_num": 3
+      }
+    },
+    "critic": {
+      "value": {
+        "_": "EnsembleVCritic",
+        "hidden_size": 300,
+        "layer_num": 3,
+        "ensemble_size": 2
+      }
+    },
+    "model_objective_scales": {
+      "parameters": {
+        "reward": {
+          "value": 1.0
+        },
+        "kl": {
+          "value": 1.0
+        },
+        "reconstruction": {
+          "value": 1.0
+        },
+        "regularization": {
+          "value": 1.0
+        }
+      }
+    },
+    "actor_objective_scales": {
+      "parameters": {
+        "actor": {
+          "value": 1.0
+        },
+        "entropy": {
+          "value": 0.0
+        }
+      }
+    },
+    "critic_objective_scales": {
+      "parameters": {
+        "critic": {
+          "value": 1.0
+        }
+      }
+    },
+    "model_optimizer": {
+      "parameters": {
+        "lr": {
+          "value": 3e-4
+        },
+        "eps": {
+          "value": 1e-5
+        },
+        "max_grad_norm": {
+          "value": 1e3
+        }
+      }
+    },
+    "actor_optimizer": {
+      "parameters": {
+        "lr": {
+          "value": 8e-5
+        },
+        "eps": {
+          "value": 1e-5
+        },
+        "max_grad_norm": {
+          "value": 1e2
+        }
+      }
+    },
+    "critic_optimizer": {
+      "parameters": {
+        "lr": {
+          "value": 8e-5
+        },
+        "eps": {
+          "value": 1e-5
+        },
+        "max_grad_norm": {
+          "value": 1e2
+        }
+      }
+    },
+    "scheduler": {
+      "values": [
+        {
+          "_": "AlternatingScheduler"
+        }
+      ]
+    },
+    "trainer": {
+      "parameters": {
+        "horizon": {
+          "min": 5,
+          "max": 20
+        },
+        "_": {"value": "DreamTrainer"},
+        "dream_ratio": {"value": 1.0}
+      }
+    },
+    "num_epochs": {
+      "value": 1000
+    },
+    "num_batches": {
+      "value": 50
+    },
+    "batch_size": {
+      "value": 32
+    },
+    "seq_len": {
+      "value": 32
+    },
+    "eval_epochs": {
+      "value": 50
+    }
+  }
+}

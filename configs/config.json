@@ -1,0 +1,166 @@
+{
+    "project_name": "finality",
+    "env_name": "walker_walk",
+    "model_filename": "model.pt",
+    "num_episodes": null,
+    "obs_type": "img",
+    "img_size": 64,
+    "action_repeat": 2,
+    "model_env": {
+        "_": "create_rssm_env",
+        "hidden_size": {
+            "parameter": true,
+            "sampling": "linear",
+            "min": 128,
+            "max": 512,
+            "rounding_factor": 32
+        },
+        "state_size": {
+            "parameter": true,
+            "sampling": "linear",
+            "min": 15,
+            "max": 45,
+            "rounding_factor": 15
+        },
+        "base_depth": 32,
+        "uncertainty_predictor": {
+            "parameter": true,
+            "values": [
+                null,
+                {
+                    "_": "RewardEnsemble",
+                    "layer_num": 2,
+                    "layer_size": 128,
+                    "ensemble_size": 6
+                },
+                {
+                    "_": "DecodeToEmbeddedEnsemble",
+                    "layer_num": 2,
+                    "layer_size": 128,
+                    "ensemble_size": 6
+                }
+            ]
+        },
+        "uncertainty_scale": {
+            "parameter": true,
+            "sampling": "linear",
+            "min": 0.01,
+            "max": 0.1
+        },
+        "dynamic_factor": 1,
+        "dynamic_uncertainty_model": null
+    },
+    "actor": {
+        "_": "TanhActor",
+        "hidden_size": {
+            "parameter": true,
+            "sampling": "linear",
+            "min": 128,
+            "max": 320,
+            "rounding_factor": 64
+        },
+        "layer_num": {
+            "parameter": true,
+            "sampling": "linear",
+            "min": 2,
+            "max": 4,
+            "rounding_factor": 1
+        }
+    },
+    "critic": {
+        "_": "EnsembleVCritic",
+        "hidden_size": {
+            "parameter": true,
+            "sampling": "linear",
+            "min": 128,
+            "max": 320,
+            "rounding_factor": 64
+        },
+        "layer_num": {
+            "parameter": true,
+            "sampling": "linear",
+            "min": 2,
+            "max": 4,
+            "rounding_factor": 1
+        },
+        "ensemble_size": {
+            "parameter": true,
+            "sampling": "linear",
+            "min": 2,
+            "max": 7,
+            "rounding_factor": 1
+        }
+    },
+    "model_objective": {
+        "_": "RSSMEnvObjective",
+        "scales": {
+            "reward": 1.0,
+            "kl": 1.0,
+            "reconstruction": 1.0,
+            "regularization": 1.0
+        }
+    },
+    "actor_objective": {
+        "_": "SACActorObjective",
+        "scales": {
+            "actor": 1.0,
+            "entropy": 1.0
+        }
+    },
+    "critic_objective": {
+        "_": "SACCriticObjective",
+        "scales": {
+            "critic": 1.0
+        }
+    },
+    "model_optimizer": {
+        "lr": {
+            "parameter": true,
+            "sampling": "log",
+            "min": 1e-5,
+            "max": 1e-3
+        },
+        "eps": 1e-8,
+        "max_grad_norm": 1e4
+    },
+    "actor_optimizer": {
+        "lr": {
+            "parameter": true,
+            "sampling": "log",
+            "min": 1e-5,
+            "max": 1e-3
+        },
+        "eps": 1e-8,
+        "max_grad_norm": 1e3
+    },
+    "critic_optimizer": {
+        "lr": {
+            "parameter": true,
+            "sampling": "log",
+            "min": 1e-5,
+            "max": 1e-3
+        },
+        "eps": 1e-8,
+        "max_grad_norm": 1e3
+    },
+    "scheduler": {
+        "_": "AlternatingScheduler"
+    },
+    "trainer": {
+        "_": "DreamTrainer",
+        "horizon": {
+            "parameter": true,
+            "sampling": "linear",
+            "min": 5,
+            "max": 25,
+            "rounding_factor": 5
+        },
+        "dream_ratio": 1
+    },
+    "num_epochs": 1000,
+    "num_batches": 100,
+    "batch_size": 8,
+    "seq_len": 32,
+    "eval_epochs": 50,
+    "save_video": true
+}
