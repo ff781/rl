@@ -2,6 +2,9 @@ import numpy as np
 import wandb
 import io
 from PIL import Image
+import matplotlib.pyplot as plt
+from collections import defaultdict
+
 
 wandb.require("core")
 
@@ -15,13 +18,17 @@ class SimpleLogger:
         self.config = config
         self.quantile_chart = QuantileChart()
 
-    def log(self, data, step=None):
+    def log(self, data, step=None, log_means=True, log_quantiles=True):
         import torch
         means_data = {k: v for k, v in data.items() if not isinstance(v, torch.Tensor)}
         quantiles_data = {k: v for k, v in data.items() if isinstance(v, torch.Tensor)}
 
-        self.log_means(means_data, step)
-        self.log_quantiles(quantiles_data, step)
+        self.update_quantiles(quantiles_data, step)
+
+        if log_means:
+            self.log_means(means_data, step)
+        if log_quantiles:
+            self.log_quantiles(step)
 
     def log_means(self, data, step=None):
         import torch
@@ -51,29 +58,29 @@ class SimpleLogger:
             
             wandb.log(log_data, step=step)
 
-    def log_quantiles(self, data, step=None):
-        import text
-        print(f"step {step:05d} (quantiles):")
-        print(text.std(data))
+    def update_quantiles(self, data, step=None):
+        self.quantile_chart.update(step, data)
+
+    def log_quantiles(self, step=None):
+        # try:
+        #     import text
+        #     print(f"step {step:05d} (quantiles):")
+        #     print(text.std(self.quantile_chart.data))
+        # except Exception as e:
+        #     1
 
         if self.run is not None:
-            log_data = {}
-            self.quantile_chart.update(step, data)
             fig = self.quantile_chart.plot()
             img_buf = io.BytesIO()
             fig.savefig(img_buf, format='png')
+            plt.close(fig)
             img_buf.seek(0)
             img = Image.open(img_buf)
-            log_data["quantile_chart"] = wandb.Image(img)
-            
             wandb.log(dict(quantile_chart=wandb.Image(img)), step=step)
 
     def finish(self):
         wandb.finish()
 
-import numpy as np
-import matplotlib.pyplot as plt
-from collections import defaultdict
 
 class QuantileChart:
     def __init__(self):

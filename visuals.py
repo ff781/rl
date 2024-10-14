@@ -345,7 +345,7 @@ def visualize_best_model_static(env=None, model=None, actor=None, critic=None, f
         predicted_returns = []
 
         with torch.no_grad():
-            obs, _ = model.reset()
+            model.reset()
             obs, _ = env.reset()
 
             for i in range(max_len):
@@ -356,7 +356,7 @@ def visualize_best_model_static(env=None, model=None, actor=None, critic=None, f
                 
                 action = action_dist.sample().cpu().numpy()
                 next_obs, reward, done, _, _ = env.step(action)
-                _ = model.step(torch.as_tensor(action.copy()))
+                model.step(torch.as_tensor(action.copy()), observation=torch.as_tensor(obs.copy()).unsqueeze(0))
                 
                 frame = env.render()
                 frames.append(frame)
@@ -461,6 +461,7 @@ def save_frames_as_video(static_frames, output_path='video.mp4', fps=10):
             writer.append_data(np.array(frame))
     
     print(f"Looping video saved to {output_path}")
+
 
 
 

@@ -193,6 +193,7 @@ class ConvDecoder(nn.Module):
             nn.ConvTranspose2d(in_channels=64, out_channels=32, kernel_size=6, stride=2),
             nn.ReLU(),
             nn.ConvTranspose2d(in_channels=32, out_channels=out_channels, kernel_size=6, stride=2),
+            nn.Tanh(),
         )
         # self.final_layer = StochasticMLPFixedStd(out_channels * img_size * img_size, out_channels * img_size * img_size, 0, None, std=1e-16)
 
@@ -243,6 +244,26 @@ class DeterministicStateModel(nn.GRUCell):
         # Restore original batch dimensions
         new_hidden = new_hidden_flat.view(*original_shape, self.hidden_size)
         return new_hidden
+
+class Det(nn.Module):
+    def forward(self, x):
+        if isinstance(x, Mapping):
+            flattened = {}
+            self._flatten_tensordict(x, '', flattened)
+            return TensorDict(flattened, batch_size=x.batch_size)
+        return x
+
+    def _flatten_tensordict(self, td, prefix, result):
+        for key, value in td.items():
+            new_key = f"{prefix}.{key}" if prefix else key
+            if isinstance(value, Mapping):
+                if 'sample' in value and isinstance(value['sample'], torch.Tensor):
+                    result[new_key] = value['sample']
+                else:
+                    self._flatten_tensordict(value, new_key, result)
+            else:
+                result[new_key] = value
+det = Det()
 
 class Cat(nn.Module):
     def __init__(self, m=lambda a:a, keys=None, target_keys=None):

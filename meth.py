@@ -237,3 +237,62 @@ class M:
         if self.alpha_emv is not None:
             r['emv'] = self.emv()
         return r
+
+def quantile(
+    input: torch.Tensor,
+    q: float | torch.Tensor,
+    dim: int | None = None,
+    keepdim: bool = False,
+    *,
+    interpolation: str = "nearest",
+    out: torch.Tensor | None = None,
+) -> torch.Tensor:
+    from math import ceil, floor
+    # Sanitization: q
+    if isinstance(q, torch.Tensor):
+        if q.numel() == 1:
+            q = q.item()
+        else:
+            return torch.stack([quantile(input, qi, dim, keepdim, interpolation=interpolation) for qi in q])
+    
+    try:
+        q = float(q)
+        assert 0 <= q <= 1
+    except Exception:
+        raise ValueError(f"Only scalar input 0<=q<=1 is currently supported (got {q})!")
+
+    # Sanitization: dim
+    # Because one cannot pass  `dim=None` to `squeeze()` or `kthvalue()`
+    if dim_was_none := dim is None:
+        dim = 0
+        input = input.reshape((-1,) + (1,) * (input.ndim - 1))
+
+    # Sanitization: interpolation
+    if interpolation == "nearest":
+        inter = round
+    elif interpolation == "lower":
+        inter = floor
+    elif interpolation == "higher":
+        inter = ceil
+    else:
+        raise ValueError(
+            "Supported interpolations currently are {'nearest', 'lower', 'higher'} "
+            f"(got '{interpolation}')!"
+        )
+
+    # Sanitization: out
+    if out is not None:
+        raise ValueError(f"Only None value is currently supported for out (got {out})!")
+
+    # Logic
+    k = inter(q * (input.shape[dim] - 1)) + 1
+    out = torch.kthvalue(input, k, dim, keepdim=True, out=out)[0]
+
+    # Rectification: keepdim
+    if keepdim:
+        return out
+    if dim_was_none:
+        return out.squeeze()
+    else:
+        return out.squeeze(dim)
+

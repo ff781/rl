@@ -64,30 +64,19 @@ class RSSMEnvObjective(nn.Module):
             )
         self.scales = scales
 
-    i = 0
     def forward(self, batch):
-        batch = batch.flatten()
+        batch = batch
         actions = batch['action']
         batch['obs'] = self.rssm_env.preprocess_obs(batch['observation'])
 
-        # markov_state = self.rssm_env.encode_observations(
-        #     observations=batch['observation']
-        # )
-
         model_batch = self.rssm_env.simulate(
-            actions=actions.unsqueeze(0),
-            # initial_state=markov_state['state'],
-            # initial_hidden=markov_state['hidden'],
-            observations=batch['observation'].unsqueeze(0),
-        ).squeeze(0)
+            actions=actions,
+            observations=batch['observation'],
+        )
+        model_batch_without_last = model_batch[:-1]
+        model_batch_without_last = model_batch_without_last.flatten()
 
-        model_batch_without_last = model_batch[0]
-
-        if self.i % 50 == 0:
-            1
-            # import text;print(text.std(dict(model=model_batch_without_last), collapse_arrays='b'))
-        self.i += 1
-
+        batch = batch.flatten()
         combined_batch = TensorDict({
             **batch,
             'encoded_obs': model_batch_without_last['encoded_obs']

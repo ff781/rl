@@ -1,0 +1,122 @@
+_wandb:
+    value:
+        cli_version: 0.17.9
+        m: []
+        python_version: 3.12.3
+        t:
+            "1":
+                - 1
+                - 5
+                - 53
+                - 55
+                - 105
+            "2":
+                - 1
+                - 5
+                - 53
+                - 55
+                - 105
+            "3":
+                - 16
+                - 23
+                - 55
+            "4": 3.12.3
+            "5": 0.17.9
+            "8":
+                - 5
+            "12": 0.17.9
+            "13": linux-x86_64
+action_repeat:
+    value: 2
+actor:
+    value:
+        _: TanhActor
+        hidden_size: 256
+        layer_num: 3
+actor_objective:
+    value:
+        _: SACActorObjective
+        scales:
+            actor: 1
+            entropy: 1
+actor_optimizer:
+    value:
+        eps: 1e-05
+        lr: 8e-05
+        max_grad_norm: 100
+batch_size:
+    value: 8
+critic:
+    value:
+        _: EnsembleVCritic
+        ensemble_size: 2
+        hidden_size: 256
+        layer_num: 3
+critic_objective:
+    value:
+        _: SACCriticObjective
+        scales:
+            critic: 1
+critic_optimizer:
+    value:
+        eps: 1e-05
+        lr: 8e-05
+        max_grad_norm: 100
+env_name:
+    value: walker_walk
+eval_epochs:
+    value: 50
+img_size:
+    value: 64
+is_test:
+    value: false
+model_env:
+    value:
+        _: create_rssm_env
+        base_depth: 32
+        dynamic_factor: null
+        dynamic_uncertainty_model: null
+        hidden_size: 256
+        state_size: 30
+        uncertainty_predictor: null
+        uncertainty_scale: null
+model_filename:
+    value: model.pt
+model_objective:
+    value:
+        _: RSSMEnvObjective
+        scales:
+            kl: 1
+            reconstruction: 1
+            regularization: 1
+            reward: 1
+model_optimizer:
+    value:
+        eps: 1e-08
+        lr: 0.0003
+        max_grad_norm: 1000
+num_batches:
+    value: 100
+num_episodes:
+    value: null
+num_epochs:
+    value: 1000
+obs_type:
+    value: img
+profile:
+    value: false
+project_name:
+    value: finality
+save_video:
+    value: true
+scheduler:
+    value:
+        _: ModelThenPolicyScheduler
+        f: 0.6
+seq_len:
+    value: 50
+trainer:
+    value:
+        _: DreamTrainer
+        dream_ratio: 1
+        horizon: 5

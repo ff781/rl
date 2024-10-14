@@ -175,23 +175,126 @@ if __name__ == "__main__":
     tanh_actor = TanhActor(state_space, action_space, init_std=0.5, min_std=1e-3, mean_scale_factor=1.5)
     weighted_actor = WeightedActor([gaussian_actor, tanh_actor], weights=[0.7, 0.3])
 
-    # Test with mock state
-    mock_state = torch.randn(1000, 4)  # Batch of 10 states
+    # Test with a small number of mock states for the tanh actor
+    mock_states = torch.randn(155, 4)  # 5 mock states with 4 dimensions each
 
-    print("Testing Gaussian Actor:")
-    gaussian_output = gaussian_actor(mock_state)
-    print(f"Action shape: {gaussian_output['action'].shape}")
-    print(f"Log prob shape: {gaussian_output['log_prob'].shape}")
-    print(f"Action range: [{gaussian_output['action'].min().item():.2f}, {gaussian_output['action'].max().item():.2f}]")
-
-    print("\nTesting Tanh Actor:")
-    tanh_output = tanh_actor(mock_state)
-    print(f"Action shape: {tanh_output['action'].shape}")
+    print("\nTesting Tanh Actor with small number of states:")
+    tanh_output = tanh_actor(mock_states)
+    
+    print("Actions:")
+    print(tanh_output['action'])
+    
+    print("\nLog Probabilities:")
+    print(tanh_output['log_prob'])
+    
+    print(f"\nAction shape: {tanh_output['action'].shape}")
     print(f"Log prob shape: {tanh_output['log_prob'].shape}")
-    print(f"Action range: [{tanh_output['action'].min().item():.2f}, {tanh_output['action'].max().item():.2f}]")
+    print(f"Action range: [{tanh_output['action'].min().item():.4f}, {tanh_output['action'].max().item():.4f}]")
 
-    print("\nTesting Weighted Actor:")
-    weighted_output = weighted_actor(mock_state)
-    print(f"Action shape: {weighted_output['action'].shape}")
-    print(f"Log prob shape: {weighted_output['log_prob'].shape}")
-    print(f"Action range: [{weighted_output['action'].min().item():.2f}, {weighted_output['action'].max().item():.2f}]")
+    # Create a squashed normal distribution with interactive loc and scale
+    import matplotlib.pyplot as plt
+    from matplotlib.widgets import Slider
+    import numpy as np
+
+    # Create the figure and axis
+    fig, ax = plt.subplots(figsize=(10, 8))
+    plt.subplots_adjust(bottom=0.25)
+
+    # Initial values for loc and scale
+    initial_loc = 0.0
+    initial_scale = 5.0
+
+    # Generate x values
+    x = np.linspace(-1, 1, 100)
+
+    # Function to update the plot
+    def update(val):
+        loc = loc_slider.val
+        scale = scale_slider.val
+        squashed_normal = _SquashedNormal(loc=torch.tensor([loc]), scale=torch.tensor([scale]))
+        pdf = squashed_normal.log_prob(torch.tensor(x)).exp().numpy()
+        line.set_ydata(pdf)
+        ax.set_title(f'PDF of Squashed Normal(loc={loc:.2f}, scale={scale:.2f})')
+        fig.canvas.draw_idle()
+
+    # Initial plot
+    squashed_normal = _SquashedNormal(loc=torch.tensor([initial_loc]), scale=torch.tensor([initial_scale]))
+    pdf = squashed_normal.log_prob(torch.tensor(x)).exp().numpy()
+    line, = ax.plot(x, pdf)
+
+    ax.set_xlabel('x')
+    ax.set_ylabel('Probability Density')
+    ax.grid(True)
+    ax.set_xlim(-1, 1)
+    ax.set_ylim(0, 1)
+
+    # Create sliders
+    ax_loc = plt.axes([0.25, 0.1, 0.65, 0.03])
+    ax_scale = plt.axes([0.25, 0.05, 0.65, 0.03])
+
+    loc_slider = Slider(ax_loc, 'Loc', -1.0, 1.0, valinit=initial_loc)
+    scale_slider = Slider(ax_scale, 'Scale', 0.1, 10.0, valinit=initial_scale)
+
+    # Register the update function with each slider
+    loc_slider.on_changed(update)
+    scale_slider.on_changed(update)
+
+    plt.show()
+    
+    # # Create a plot using Plotly
+    # import plotly.graph_objects as go
+    # import numpy as np
+
+    # # Create the squashed normal distribution
+    # squashed_normal = _SquashedNormal(loc=torch.tensor([0.0]), scale=torch.tensor([5]))
+
+    # # Generate x values
+    # x = np.linspace(-1, 1, 100)
+
+    # # Calculate PDF values using the change of variables formula
+    # pdf = squashed_normal.log_prob(torch.tensor(x)).exp().numpy()
+
+    # # Create the Plotly figure
+    # fig = go.Figure()
+
+    # # Add the PDF trace
+    # fig.add_trace(go.Scatter(x=x, y=pdf, mode='lines', name='PDF'))
+
+    # # Update layout
+    # fig.update_layout(
+    #     title='PDF of Squashed Normal(0, 5)',
+    #     xaxis_title='x',
+    #     yaxis_title='Probability Density',
+    #     xaxis_range=[-1, 1],
+    #     yaxis_range=[0, 1],
+    #     width=800,
+    #     height=500
+    # )
+
+    # # Add grid
+    # fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='LightGray')
+    # fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='LightGray')
+
+    # # Show the plot
+    # fig.show()
+
+    # # Test with mock state
+    # mock_state = torch.randn(1000, 4)  # Batch of 10 states
+
+    # print("Testing Gaussian Actor:")
+    # gaussian_output = gaussian_actor(mock_state)
+    # print(f"Action shape: {gaussian_output['action'].shape}")
+    # print(f"Log prob shape: {gaussian_output['log_prob'].shape}")
+    # print(f"Action range: [{gaussian_output['action'].min().item():.2f}, {gaussian_output['action'].max().item():.2f}]")
+
+    # print("\nTesting Tanh Actor:")
+    # tanh_output = tanh_actor(mock_state)
+    # print(f"Action shape: {tanh_output['action'].shape}")
+    # print(f"Log prob shape: {tanh_output['log_prob'].shape}")
+    # print(f"Action range: [{tanh_output['action'].min().item():.2f}, {tanh_output['action'].max().item():.2f}]")
+
+    # print("\nTesting Weighted Actor:")
+    # weighted_output = weighted_actor(mock_state)
+    # print(f"Action shape: {weighted_output['action'].shape}")
+    # print(f"Log prob shape: {weighted_output['log_prob'].shape}")
+    # print(f"Action range: [{weighted_output['action'].min().item():.2f}, {weighted_output['action'].max().item():.2f}]")

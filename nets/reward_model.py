@@ -15,9 +15,13 @@ class RewardModelWithUncertainty(nn.Module):
 
         self.uncertainty_scale = uncertainty_scale or 0
         self.dynamic_factor = dynamic_factor
+        if not self.dynamic_factor:
+            dynamic_uncertainty_model = None
         self.dynamic_uncertainty_model = dynamic_uncertainty_model
         self.running_uncertainty = meth.M(sum=None, track_variance=True)
         self.running_reward = meth.M(sum=None, track_variance=True)
+        self.warmup_steps = 100
+        self.step_count = 0
 
     def forward(self, x):
         reward_unpenalized = self.reward_model(x)
@@ -43,7 +47,7 @@ class RewardModelWithUncertainty(nn.Module):
         if self.dynamic_factor:
             with torch.no_grad():
                 _ = self.running_uncertainty.std().mean()
-                if _ == 0:
+                if _ == 0 or self.step_count < self.warmup_steps:
                     return 1.0
                 return self.dynamic_factor * self.running_reward.std().mean() / _
         return self.uncertainty_scale
@@ -51,7 +55,7 @@ class RewardModelWithUncertainty(nn.Module):
     def loss(self, x, targets):
         reward_loss = self.reward_model.loss(x, targets)
         uncertainty_loss = self.uncertainty_predictor.loss(x, targets).to(reward_loss)
-        dynamic_uncertainty_loss = self.dynamic_uncertainty_model.loss(x, targets) if self.dynamic_uncertainty_model else torch.tensor(0.0)
+        dynamic_uncertainty_loss = self.dynamic_uncertainty_model.loss(x, targets) if self.dynamic_uncertainty_model else torch.tensor(0.0).to(reward_loss)
         return torch.stack([reward_loss, uncertainty_loss, dynamic_uncertainty_loss]).sum()
 
     def update(self, x: TensorDict):
@@ -62,6 +66,7 @@ class RewardModelWithUncertainty(nn.Module):
                 self.running_uncertainty.add_batch(uncertainty)
                 reward = x['reward'].view(-1, x['reward'].size(-1))
                 self.running_reward.add_batch(reward)
+                self.step_count += 1
                 return dict(
                     running_uncertainty_std=self.running_uncertainty.std().mean().item(),
                     running_reward_std=self.running_reward.std().mean().item(),

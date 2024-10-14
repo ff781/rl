@@ -14,12 +14,11 @@ import tempfile
 from sweep import Sweep, extract_varying_keys, embellish_config
 import time
 import glob
+import torch.profiler
+import cProfile
+import pstats
+import io
 
-# os.environ["MUJOCO_GL"] = "egl"
-
-PROJ_HOME = '/pfs/data5/home/kit/stud/ujtsk/proj/bisch0'
-if not os.path.exists(PROJ_HOME):
-    PROJ_HOME = os.environ.get('PROJ_HOME', os.path.expanduser('~'))
 MAX_JOBS = 100
 jobs_queue = []
 PID = os.getpid()
@@ -28,10 +27,12 @@ class JobSubmitter(threading.Thread):
     def __init__(self, total_jobs, sweep):
         super().__init__(daemon=True)
         self.stop_event = threading.Event()
-        self.deer = f"{PROJ_HOME}/output/{PID}_run"
+        self.deer = f"{cluster.OUTPUT_HOME}/{PID}_run"
         os.makedirs(self.deer, exist_ok=True)
+        print(f"{self.deer=}")
         self.total_jobs = total_jobs
         self.submitted_jobs = 0
+        self.completed_jobs = 0
         self.sweep = sweep
         self.job_id_to_config = {}
         self.best_config = None
@@ -40,9 +41,9 @@ class JobSubmitter(threading.Thread):
 
     def run(self):
         self.last_job_queue_len = -1
-        while jobs_queue and not self.stop_event.is_set():
+        while (jobs_queue or self.completed_jobs < self.total_jobs) and not self.stop_event.is_set():
             current_jobs = int(subprocess.getoutput('squeue -h | wc -l'))
-            if current_jobs < MAX_JOBS:
+            if current_jobs < MAX_JOBS and jobs_queue:
                 jobs_to_submit = min(MAX_JOBS - current_jobs, len(jobs_queue))
                 for _ in range(jobs_to_submit):
                     job = jobs_queue.pop(0)
@@ -80,15 +81,17 @@ class JobSubmitter(threading.Thread):
                 self.best_objective = objective
                 self.best_cost = cost
             os.remove(filename)
+            self.completed_jobs += 1
 
     def update_get_file(self):
-        get_file = f"{PROJ_HOME}/output/run_{PID}/get"
+        get_file = f"{self.deer}/get"
         with open(get_file, 'w') as f:
-            progress = self.submitted_jobs / self.total_jobs
+            progress = self.completed_jobs / self.total_jobs
             bar_length = 50
             filled_length = int(bar_length * progress)
             bar = '=' * filled_length + '-' * (bar_length - filled_length)
-            f.write(f"\nProgress: [{bar}] {self.submitted_jobs}/{self.total_jobs}")
+            f.write(f"\nProgress: [{bar}] {self.completed_jobs}/{self.total_jobs}")
+            f.write(f"\nSubmitted jobs: {self.submitted_jobs}")
             if self.best_config:
                 f.write(f"\nBest config: {json.dumps(extract_varying_keys(self.sweep.config, self.best_config))}")
                 f.write(f"\nBest objective: {self.best_objective}")
@@ -188,6 +191,7 @@ def train(config):
     from logger import SimpleLogger
     import trainer
     import trainer.objective
+
     # Dynamic imports
     for module in ['nets', 'actor', 'critic', 'trainer', 'trainer.objective']:
         module_obj = __import__(module, fromlist=['*'])
@@ -211,8 +215,6 @@ def train(config):
         config['seq_len'] = 2
         config['num_episodes'] = 2
         config['eval_epochs'] = 1
-
-    torch.autograd.set_detect_anomaly(True)
 
     # Create logger
     logger = SimpleLogger(project_name=config.get('project_name'), config=config)
@@ -291,29 +293,56 @@ def train(config):
     def new_best_model_cb():
         if not is_test:
             save_model(trainer)
-        static_frames = visuals.visualize_best_model_static(
-            env=dmc_env,
-            model=env,
-            actor=actor,
-            critic=critic,
-            max_len=100,
-        )
-        if not cluster.get_is_cluster() and config.get('save_video', False):
-            visuals.save_frames_as_video(
-                static_frames,
-                output_path=posixpath.join(cluster.OUTPUT_HOME, "video.mp4")
+            static_frames = visuals.visualize_best_model_static(
+                env=dmc_env,
+                model=env,
+                actor=actor,
+                critic=critic,
+                max_len=100,
             )
-        return dict(video=static_frames)
+            if not cluster.get_is_cluster() and config.get('save_video', False):
+                visuals.save_frames_as_video(
+                    static_frames,
+                    output_path=posixpath.join(cluster.OUTPUT_HOME, "video.mp4")
+                )
+            return dict(video=static_frames)
+        return dict()
 
     start_time = time.time()
-    best_eval_return = trainer.train(
-        epochs=config['num_epochs'],
-        batches=config['num_batches'],
-        bs=config['batch_size'],
-        sl=config['seq_len'],
-        eval_epochs=config['eval_epochs'],
-        new_best_model_cb=new_best_model_cb,
-    )
+    
+    if config.get('profile', False):
+        with torch.profiler.profile(
+            activities=[
+                torch.profiler.ProfilerActivity.CPU,
+                # torch.profiler.ProfilerActivity.CUDA,
+            ],
+            schedule=torch.profiler.schedule(wait=1, warmup=1, active=3, repeat=2),
+            # on_trace_ready=torch.profiler.tensorboard_trace_handler('./log/profiler'),
+            record_shapes=True,
+            profile_memory=False,
+            with_stack=False
+        ) as prof:
+            best_eval_return = trainer.train(
+                epochs=8,
+                batches=4,
+                bs=4,
+                sl=4,
+                eval_epochs=12345,
+                new_best_model_cb=None,
+                profiler=prof,
+            )
+        
+        print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
+    else:
+        best_eval_return = trainer.train(
+            epochs=config['num_epochs'],
+            batches=config['num_batches'],
+            bs=config['batch_size'],
+            sl=config['seq_len'],
+            eval_epochs=config['eval_epochs'],
+            new_best_model_cb=new_best_model_cb,
+        )
+    
     end_time = time.time()
     training_time = end_time - start_time
 
@@ -326,7 +355,7 @@ def train(config):
             'objective': best_eval_return,
             'cost': training_time
         }
-        result_file = f"{PROJ_HOME}/output/{PID}_run/job_{result['job_id']}_result.json"
+        result_file = f"{cluster.OUTPUT_HOME}/{PID}_run/job_{result['job_id']}_result.json"
         with open(result_file, 'w') as f:
             json.dump(result, f)
 
@@ -340,6 +369,7 @@ def parse_args():
     parser.add_argument('-a', '--agent', action='store_true', help="Set to run agent with configs/sweep.json")
     parser.add_argument('-ut', '--use-tempfile', action='store_true', help="Use tempfile for config instead of direct JSON.")
     parser.add_argument('-e', '--extra_args', nargs=argparse.REMAINDER, help="Additional arguments to pass through.")
+    parser.add_argument('-p', '--profile', action='store_true', help="Enable profiling")
     args = parser.parse_args()
     return args
 
@@ -373,7 +403,7 @@ if __name__ == "__main__":
             def _():
                 wandb.init(project=project_name)
                 print("Starting agent training loop...")
-                train(wandb.config.as_dict() | dict(project_name=project_name, is_test=args.is_test))
+                train(wandb.config.as_dict() | dict(project_name=project_name, is_test=args.is_test, profile=args.profile))
             wandb.agent(sweep_id, function=_, project=project_name)
 
         except KeyError as e:
@@ -383,6 +413,7 @@ if __name__ == "__main__":
         if 'method' in config and 'parameters' in config:
 
             config['parameters']['is_test'] = dict(value=args.is_test)
+            config['parameters']['profile'] = dict(value=args.profile)
 
             project_name = config.pop("project_name", "uncategorized")
 
@@ -399,6 +430,7 @@ if __name__ == "__main__":
         else:
         
             config['is_test'] = args.is_test
+            config['profile'] = args.profile
             
             # Treat the config as a sweep config
             sweep = Sweep(config)
@@ -409,7 +441,6 @@ if __name__ == "__main__":
 
                 if is_cluster:
                     submitter = JobSubmitter(len(sweep_configs), sweep)
-                    print(f"{submitter.deer=}")
                     for config in sweep_configs:
                         run_slurm(config, args.use_tempfile, " ".join(args.extra_args) if args.extra_args else "")
                     submitter.start()
@@ -425,4 +456,4 @@ if __name__ == "__main__":
                             break
             else:
                 config = sweep.suggest()  # Generate only one configuration
-                train(config | dict(is_test=args.is_test))  # Immediately run using train
+                train(config | dict(is_test=args.is_test, profile=args.profile))  # Immediately run using train

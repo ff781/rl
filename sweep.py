@@ -3,7 +3,6 @@ import itertools
 import random
 import math
 
-from matplotlib import pyplot as plt
 import numpy as np
 from carbs import CARBS, CARBSParams, LinearSpace, ObservationInParam, Param
 

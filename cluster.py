@@ -8,6 +8,7 @@ CODE_HOME = os.path.dirname(os.path.abspath(__file__))
 PROJ_HOME = os.path.dirname(CODE_HOME)
 DATA_HOME = os.path.join(PROJ_HOME, 'data')
 OUTPUT_HOME = os.path.join(PROJ_HOME, 'output')
+os.environ["PROJ_HOME"] = PROJ_HOME
 
 
 def get_is_cluster():

@@ -1,0 +1,47 @@
+{
+  "os": "Linux-6.8.0-45-generic-x86_64-with-glibc2.39",
+  "python": "3.12.3",
+  "startedAt": "2024-10-13T00:01:50.000363Z",
+  "args": [
+    "--config",
+    "configs/lambda_test.json"
+  ],
+  "program": "/media/veracrypt2/cnnuy/data/b/bisch0/kot2/main.py",
+  "codePath": "main.py",
+  "git": {
+    "remote": "git@ff781:ALRhub/offline_mbrl_from_visual_observations.git",
+    "commit": "15c40dcd29f67301053d4656d9e3d93e24b4054b"
+  },
+  "email": "ujtsk@student.kit.edu",
+  "root": "/media/veracrypt2/cnnuy/data/b/bisch0/kot2",
+  "host": "cnnuy-predator",
+  "username": "cnnuy",
+  "executable": "/media/veracrypt2/cnnuy/profiles/py/pyvenv/bin/python3",
+  "codePathLocal": "main.py",
+  "cpu_count": 14,
+  "cpu_count_logical": 20,
+  "gpu": "[NVIDIA GeForce RTX 3080 Ti Laptop GPU]",
+  "gpu_count": 1,
+  "disk": {
+    "/": {
+      "total": "1003753218048",
+      "used": "330990190592"
+    }
+  },
+  "memory": {
+    "total": "16456040448"
+  },
+  "cpu": {
+    "count": 14,
+    "countLogical": 20
+  },
+  "gpu_nvidia": [
+    {
+      "name": "NVIDIA GeForce RTX 3080 Ti Laptop GPU",
+      "memoryTotal": "17179869184",
+      "cudaCores": 7424,
+      "architecture": "Ampere"
+    }
+  ],
+  "cudaVersion": "12.4"
+}

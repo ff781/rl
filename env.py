@@ -142,8 +142,10 @@ class RSSMEnv(Env, nn.Module):
         ))
         return self.postprocess_obs(obs), {}
 
-    def step(self, action):
-        _ = self.simulate(action.unsqueeze(0), initial_hidden=self.hidden)[0]
+    def step(self, action, observation=None):
+        _ = self.simulate(action.unsqueeze(0), initial_hidden=self.hidden, observations=observation.unsqueeze(0) if observation is not None else None)
+        self.hidden = _['hidden'][-1]
+        _ = _[0]
         return self.postprocess_obs(_['obs']), _['reward'], _['terminal'], False, {}
 
     def markov_state_space(self):
@@ -188,11 +190,9 @@ class RSSMEnv(Env, nn.Module):
 
         initial_state = initial_state if initial_state is not None else self.stoch_state_model.forward_all(initial_hidden)
 
-        hidden_list = [initial_hidden]
-        state_list = [initial_state]
+        hidden_list = []
+        state_list = []
         prior_state_list = []
-        if observations is not None:
-            prior_state_list.append(state_list.pop())
         action_list = []
         obs_list = []
         reward_list = []
@@ -211,19 +211,19 @@ class RSSMEnv(Env, nn.Module):
             )
         
         for step in range(steps):
-            action = actions(nets.cat(TensorDict(
-                dict(
-                    hidden=hidden,
-                    state=state["sample"],
-                ), batch_size=batch_size,
-            ))) if callable(actions) else actions[step]
-
             if observations is not None:
                 prior_state_list.append(state)
                 preprocessed_obs = self.preprocess_obs(observations[step])
                 encoded_obs = self.obs_encoder(preprocessed_obs)
                 state = self.update_state_model.forward_all(torch.cat([hidden, encoded_obs], dim=-1))
                 encoded_obs_list.append(encoded_obs)
+
+            action = actions(nets.cat(TensorDict(
+                dict(
+                    hidden=hidden,
+                    state=state["sample"],
+                ), batch_size=batch_size,
+            ))) if callable(actions) else actions[step]
 
             hidden_state_action = TensorDict(
                 dict(
@@ -246,7 +246,11 @@ class RSSMEnv(Env, nn.Module):
             state = self.stoch_state_model.forward_all(next_hidden)
         
         if observations is not None:
+            prior_state_list.append(state)
             state_list.append(torch.zeros_like(state_list[0]))
+        else:
+            state_list.append(state)
+        hidden_list.append(hidden)
 
         result = TensorDict({
             'hidden': torch.stack(hidden_list),

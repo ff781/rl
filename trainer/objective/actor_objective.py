@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import torch.distributions as dists
 from tensordict import TensorDict
 import trainer
+import nets
 
 
 
@@ -66,12 +67,7 @@ class SACActorObjective(nn.Module):
             )
             for batch_type, sub_batch in batch.items():
                 if sub_batch is not None:
-                    from typing import Mapping
-                    
-                    flattened_batch = TensorDict({
-                        k: sub_batch[k]['sample'] if isinstance(sub_batch[k], Mapping) else sub_batch[k]
-                        for k in sub_batch.keys()
-                    }, batch_size=sub_batch.batch_size).flatten()
+                    flattened_batch = nets.det(sub_batch).flatten()
                     
                     first_element = {k: v[0] for k, v in flattened_batch.items()}
                     
