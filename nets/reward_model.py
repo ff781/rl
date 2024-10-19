@@ -17,6 +17,8 @@ class RewardModelWithUncertainty(nn.Module):
         self.dynamic_factor = dynamic_factor
         if not self.dynamic_factor:
             dynamic_uncertainty_model = None
+        elif dynamic_uncertainty_model is None:
+            dynamic_uncertainty_model = self.uncertainty_predictor
         self.dynamic_uncertainty_model = dynamic_uncertainty_model
         self.running_uncertainty = meth.M(sum=None, track_variance=True)
         self.running_reward = meth.M(sum=None, track_variance=True)
@@ -56,7 +58,11 @@ class RewardModelWithUncertainty(nn.Module):
         reward_loss = self.reward_model.loss(x, targets)
         uncertainty_loss = self.uncertainty_predictor.loss(x, targets).to(reward_loss)
         dynamic_uncertainty_loss = self.dynamic_uncertainty_model.loss(x, targets) if self.dynamic_uncertainty_model else torch.tensor(0.0).to(reward_loss)
-        return torch.stack([reward_loss, uncertainty_loss, dynamic_uncertainty_loss]).sum()
+        return torch.stack([reward_loss, uncertainty_loss, dynamic_uncertainty_loss]).sum(), dict(
+            reward_loss=reward_loss.item(),
+            uncertainty_loss=uncertainty_loss.item(),
+            dynamic_uncertainty_loss=dynamic_uncertainty_loss.item(),
+        )
 
     def update(self, x: TensorDict):
         if self.dynamic_factor:

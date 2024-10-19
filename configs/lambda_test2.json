@@ -11,9 +11,14 @@
         "hidden_size": 256,
         "state_size": 30,
         "base_depth": 32,
-        "uncertainty_predictor": null,
+        "uncertainty_predictor": {
+            "_": "RewardEnsemble",
+            "layer_num": 2,
+            "layer_size": 128,
+            "ensemble_size": 6
+        },
         "uncertainty_scale": null,
-        "dynamic_factor": null,
+        "dynamic_factor": 1,
         "dynamic_uncertainty_model": null
     },
     "actor": {
@@ -32,7 +37,7 @@
         "scales": {
             "reward": 1.0,
             "kl": 1.0,
-            "reconstruction": 3000.0,
+            "reconstruction": 4500.0,
             "regularization": 0.0
         }
     },
@@ -50,7 +55,7 @@
         }
     },
     "model_optimizer": {
-        "lr": 3.3e-4,
+        "lr": 3e-4,
         "eps": 1e-8,
         "max_grad_norm": 6.9e2
     },

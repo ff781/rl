@@ -36,7 +36,10 @@ def gaussian_rssm_kl_loss(lhs_mean, lhs_std, rhs_mean, rhs_std, free_nats=2.0, b
     # max(KL, free_nats)
     
     with torch.no_grad():
-        log_dict = dict(kl=lhs_kl.mean().item())
+        log_dict = dict(
+            lhs_kl=lhs_kl.mean().item(),
+            rhs_kl=rhs_kl.mean().item(),
+        )
 
     return kl_loss, log_dict
 
@@ -81,7 +84,7 @@ class RSSMEnvObjective(nn.Module):
             **batch,
             'encoded_obs': model_batch_without_last['encoded_obs']
         }, batch_size=batch.batch_size)
-        reward_loss = self.rssm_env.reward_model.loss(model_batch_without_last, combined_batch)
+        reward_loss, reward_log_dict = self.rssm_env.reward_model.loss(model_batch_without_last, combined_batch)
         reward_running_log_dict =self.rssm_env.reward_model.update(model_batch_without_last)
 
         kl_loss, kl_log_dict = gaussian_rssm_kl_loss(
@@ -116,6 +119,7 @@ class RSSMEnvObjective(nn.Module):
                 "kl_loss": kl_loss.item(),
                 "reconstruction_loss": reconstruction_loss.item(),
                 "regularization_loss": regularization_loss.item(),
+                **{f"{k}": v for k, v in reward_log_dict.items()},
                 **{f"{k}": v for k, v in reward_running_log_dict.items()},
                 **{f"{k}": v for k, v in kl_log_dict.items()},
                 "reward_mse": reward_mse.item(),
