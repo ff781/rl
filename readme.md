@@ -41,9 +41,3 @@ After installation, you can use the library by running `main.py`. Here are some 
    ```
    python main.py --config config.json --is_test
    ```
-
-For more detailed usage and configuration options, please refer to the `parse_args()` function in `main.py`.
-
-## Todo
-Currently there is a memory leak from the model output values quantile tracker, which was added to find convergence problems of the model.
-
