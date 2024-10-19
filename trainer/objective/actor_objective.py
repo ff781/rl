@@ -31,13 +31,12 @@ class SACActorObjective(nn.Module):
 
         with trainer.freeze_params(self.critic, self.env):
             actor_loss = 0
-            entropy_loss = 0
+            entropy_loss = torch.tensor(0.0)
 
             for batch_type in ['real', 'dream']:
 
                 if batch.get(batch_type) is not None:
 
-                    states = batch[batch_type]['state']["sample"]
                     action_log_probs = self.actor(batch[batch_type])
                     actions, log_probs = action_log_probs['action'], action_log_probs['log_prob']
 
@@ -45,12 +44,13 @@ class SACActorObjective(nn.Module):
                     acted_batch['action'] = actions
                     acted_batch['reward'], reward_model_log_dict = self.env.reward_model(acted_batch)
                     acted_batch['reward'] = acted_batch['reward']['reward']
-                    
-                    target_values = self.critic.actor_values(acted_batch)
-                    
+
+                    achieved_values = self.critic.actor_values(acted_batch)
+
                     # L(π) = 𝔼[-Q(s,a) + α * log π(a|s)]
-                    actor_loss += -target_values.mean()
-                    entropy_loss += log_probs.mean()
+                    actor_loss += -achieved_values.mean()
+                    if self.scales["entropy"]:
+                        entropy_loss += log_probs.mean()
 
             # Total loss
             loss = (

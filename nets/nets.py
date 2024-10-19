@@ -111,18 +111,6 @@ class StochasticMLPFixedStd(StochasticMLP):
 
     def get_std(self, x, mean):
         return torch.full_like(mean, fill_value=self.std)
-    
-    def loss(self, inputs, targets, mask=None):
-        outputs = self.forward_all(inputs)
-        dist = Normal(outputs['mean'], outputs['std'])
-        sample_wise_ll = dist.log_prob(targets).sum(dim=-1)
-        
-        if mask is None:
-            loss = -sample_wise_ll.mean()
-        else:
-            loss = -(sample_wise_ll * mask).sum() / mask.sum()
-
-        return loss
 
 
 class ConvEncoder(nn.Module):

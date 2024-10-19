@@ -52,8 +52,6 @@ class DMCEnv(Env):
                     shape = (1,)
                 else:
                     shape = value.shape
-                
-                # Normalize observations to [-1, 1]
                 spaces[key] = gym.spaces.Box(
                     low=-1, high=1, shape=shape, dtype=np.float32
                 )
@@ -358,13 +356,7 @@ def create_rssm_env(
         dynamic_uncertainty_model = dynamic_uncertainty_model(sizes=sizes)
     
     reward_model = nets.RewardModelWithUncertainty(
-        reward_model=nets.Cat(nets.StochasticMLPFixedStd(
-            input_dim=hidden_size + state_size,
-            output_dim=1,
-            layer_num=2,
-            layer_size=hidden_layer_size,
-            activation=nn.ELU(inplace=True)
-        ), keys=['hidden', 'state'], target_keys=['reward']) if 0 else nets.Cat(nets.MLP(
+        reward_model=nets.Cat(nets.MLP(
             input_dim=hidden_size + state_size,
             output_dim=1,
             layer_num=2,
@@ -376,7 +368,7 @@ def create_rssm_env(
         dynamic_factor=dynamic_factor,
         dynamic_uncertainty_model=dynamic_uncertainty_model,
     )
-    # Create RSSM environment
+
     rssm_env = RSSMEnv(
         obs_space=obs_space,
         action_space=action_space,

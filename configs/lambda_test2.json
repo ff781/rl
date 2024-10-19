@@ -32,8 +32,8 @@
         "scales": {
             "reward": 1.0,
             "kl": 1.0,
-            "reconstruction": 1.0,
-            "regularization": 1.0
+            "reconstruction": 3000.0,
+            "regularization": 0.0
         }
     },
     "actor_objective": {
@@ -50,9 +50,9 @@
         }
     },
     "model_optimizer": {
-        "lr": 3.5e-4,
+        "lr": 3.3e-4,
         "eps": 1e-8,
-        "max_grad_norm": 5e2
+        "max_grad_norm": 6.9e2
     },
     "actor_optimizer": {
         "lr": 8e-5,
@@ -72,7 +72,7 @@
         "horizon": 5,
         "dream_ratio": 1
     },
-    "num_epochs": 1000,
+    "num_epochs": 1001,
     "num_batches": 100,
     "batch_size": 64,
     "seq_len": 50,

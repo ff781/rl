@@ -152,7 +152,7 @@ class MBTrainer(nn.Module):
 
                 mean_log_dict = dict(sorted(mean_log_dict.items()))
 
-                self.logger.log(mean_log_dict, step=self.i_epoch, log_quantiles=self.i_epoch%50==0)
+                self.logger.log(mean_log_dict, step=self.i_epoch, log_quantiles=0 and self.i_epoch%50==0)
                 self.i_epoch += 1
 
                 if profiler:
@@ -197,7 +197,7 @@ class MBTrainer(nn.Module):
         
         self.optimizers['actor'].step()
 
-        critic_loss, _ = self.objectives['critic'](batch)
+        critic_loss, _ = self.objectives['critic']({k: v.detach() if hasattr(v, 'detach') else v for k, v in batch.items()})
         log_dict |= {f"critic/{k}": v for k, v in _.items()}
         self.optimizers['critic'].zero_grad()
         critic_loss.backward()
@@ -238,7 +238,7 @@ class DreamTrainer(MBTrainer):
 
         if mode == 'policy':
 
-            with freeze_params(self.model, self.actor, self.critic):
+            with freeze_params(self.model, self.critic):
                 total_samples = batch.shape[0] * batch.shape[1]
                 dream_batch_size = int(batch.shape[0] * self.dream_ratio / (1 - self.dream_ratio)) if self.dream_ratio < 1 else total_samples
                 
@@ -259,7 +259,7 @@ class DreamTrainer(MBTrainer):
                     steps=steps,
                     batch_size=collapsed_batch.shape,
                 )
-                dream = simulated_batch
+                dream = simulated_batch[:-1]
 
                 real = None
                 if self.dream_ratio < 1:

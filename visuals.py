@@ -320,7 +320,7 @@ import io
 from PIL import Image
 import torch
 
-def visualize_best_model_static(env=None, model=None, actor=None, critic=None, filepath=None, device=None, max_len=100):
+def visualize_best_model_static(env=None, model=None, actor=None, critic=None, filepath=None, device=None, max_len=100, discount=0.99):
     # Determine the device
     if device is None:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -377,6 +377,14 @@ def visualize_best_model_static(env=None, model=None, actor=None, critic=None, f
                 
                 obs = next_obs
 
+    # Compute real values (discounted cumulative sum of rewards)
+    real_values = []
+    cumulative_reward = 0
+    for reward in reversed(rewards):
+        cumulative_reward = reward + discount * cumulative_reward
+        real_values.append(cumulative_reward)
+    real_values.reverse()
+
     # Generate static images for each frame
     static_frames = []
     action_dim = env.action_space.shape[0]
@@ -389,7 +397,7 @@ def visualize_best_model_static(env=None, model=None, actor=None, critic=None, f
         y_data = [dist.log_prob(torch.tensor(x_expanded)).exp().cpu().numpy() for dist in action_dists]
 
     # Calculate global min and max for rewards
-    all_values = rewards + predicted_rewards + predicted_returns
+    all_values = rewards + predicted_rewards + predicted_returns + real_values
     global_min = min(all_values)
     global_max = max(all_values)
     # Iterate through each frame, using tqdm for a progress bar
@@ -416,9 +424,9 @@ def visualize_best_model_static(env=None, model=None, actor=None, critic=None, f
         # fig.update_yaxes(title_text="Probability Density", row=1, col=3)
 
         # Prepare data for the bar chart of rewards and predictions
-        values = [rewards[frame_index], predicted_rewards[frame_index], predicted_returns[frame_index]]
-        colors = ['blue', 'green', 'red']
-        names = ['Env Reward', 'Model Reward', 'Critic']
+        values = [rewards[frame_index], predicted_rewards[frame_index], predicted_returns[frame_index], real_values[frame_index]]
+        colors = ['blue', 'green', 'red', 'purple']
+        names = ['Env Reward', 'Model Reward', 'Critic', 'Real Value']
         
         # Add a bar chart for rewards and predictions to the fourth subplot
         fig.add_trace(go.Bar(

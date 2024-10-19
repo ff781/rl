@@ -17,7 +17,7 @@ def get_is_cluster():
 def run(cmd, is_cluster=None, filename='sweep.txt', job_name='sweep', time=1):
     times = [
         '00:00:30',
-        '15:59:59',
+        '16:59:59',
         '23:59:59',
     ]
     if is_cluster is None:

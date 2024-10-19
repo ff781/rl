@@ -63,7 +63,7 @@ class EnsembleVCritic(Critic):
         self.v_net = nets.Cat(
             nets.Ensemble(
                 module_f=lambda: nets.MLP(
-                    input_dim=np.prod(state_space.shape),
+                    input_dim=np.prod(getattr(state_space, 'shape', state_space)),
                     output_dim=1,
                     layer_num=layer_num,
                     layer_size=hidden_size,
@@ -90,7 +90,7 @@ class EnsembleQCritic(Critic):
         self.q_net = nets.Cat(
             nets.Ensemble(
                 module_f=lambda:nets.MLP(
-                    input_dim=np.prod(state_space.shape) + np.prod(action_space.shape),
+                    input_dim=np.prod(getattr(state_space, 'shape', state_space)) + np.prod(getattr(action_space, 'shape', action_space)),
                     output_dim=1,
                     layer_num=layer_num,
                     layer_size=hidden_size,
@@ -140,35 +140,3 @@ class EnsembleQCritic(Critic):
 class DoubleQCritic(EnsembleQCritic):
     def __init__(self, state_space, action_space, hidden_size=256, layer_num=2):
         super().__init__(state_space, action_space, hidden_size, layer_num, ensemble_size=2)
-
-
-def main():
-    import matplotlib.pyplot as plt
-    import numpy as np
-
-    # Example reward and values sequence from a dmc task
-    rewards = torch.tensor([0.5, 0.7, 0.2, 0.9, 1.1, 0.4, 0.6, 0.8, 1.0, 0.3, 0.5, 0.7, 0.9, 1.2, 0.6, 0.4, 0.8, 1.0, 0.9, 0.7])
-    values = torch.tensor([4.5, 4.2, 3.8, 3.5, 3.2, 3.0, 2.8, 2.5, 2.2, 2.0, 1.8, 1.5, 1.2, 1.0, 0.8, 0.6, 0.4, 0.2, 0.1, 0.0])
-    gamma = 0.99
-    lammda = 0.95
-
-    # Compute GAE
-    returns, advantages = compute_gae_wrong(rewards, values, gamma, lammda)
-    
-    # Compute GAE0
-    returns0 = compute_returns0(rewards, values, gamma, lammda)
-
-    # Plot the results
-    plt.plot(rewards, label='Rewards')
-    plt.plot(values, label='Values')
-    plt.plot(returns, label='Returns')
-    plt.plot(advantages, label='Advantages')
-    plt.plot(returns0, label='Returns0')
-    plt.xlabel('Time Step')
-    plt.ylabel('Value')
-    plt.title('Rewards, Values, Returns, and Advantages')
-    plt.legend()
-    plt.show()
-
-if __name__ == "__main__":
-    main()
